@@ -1,0 +1,55 @@
+steps:
+  # Build the backend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-backend:latest', './backend']
+
+  # Build the frontend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--build-arg', 'VITE_API_URL=https://pentominoes-backend-869160643502.us-central1.run.app',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-frontend:latest',
+      './frontend'
+    ]
+
+  # Push images to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-backend:latest']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-frontend:latest']
+
+  # Deploy backend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pentominoes-backend'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-backend:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'ALLOWED_ORIGINS=*'
+
+  # Deploy frontend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pentominoes-frontend'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-frontend:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-backend:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/pentominoes-repo/pentominoes-frontend:latest'

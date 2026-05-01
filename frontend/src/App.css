@@ -1,0 +1,208 @@
+.app {
+  padding: 1rem 1.5rem 2rem;
+  text-align: left;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mode-toggle button,
+.dims button,
+.actions button,
+.solve-panel button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  font: inherit;
+}
+
+.mode-toggle button.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.board-section {
+  flex: 1;
+  min-width: 280px;
+}
+
+.dims {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.dims label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.dims input[type='number'] {
+  width: 4.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+:root {
+  --cell: min(28px, 4vw);
+  --empty: #2a2d38;
+}
+
+.grid {
+  display: grid;
+  gap: 2px;
+  background: var(--border);
+  padding: 2px;
+  width: fit-content;
+  border-radius: 8px;
+}
+
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  border: none;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cell:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.side {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.side h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.piece-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.piece-glyph {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 4px;
+  background: var(--code-bg);
+  cursor: pointer;
+}
+
+.piece-glyph.dimmed {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.piece-glyph.selected {
+  border-color: var(--accent);
+}
+
+.orient-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.actions {
+  margin-bottom: 0.75rem;
+}
+
+.hint,
+.meta {
+  font-size: 0.8rem;
+  color: var(--text);
+  margin: 0.5rem 0 0;
+}
+
+.solve-panel label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.solve-panel select {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0.35rem;
+  width: 100%;
+  max-width: 12rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.metrics {
+  margin: 1rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.9rem;
+}
+
+.metrics dt {
+  margin: 0;
+  color: var(--text);
+}
+
+.metrics dd {
+  margin: 0;
+  font-family: var(--mono);
+}
+
+.msg {
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
