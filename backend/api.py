@@ -1,4 +1,8 @@
-"""FastAPI HTTP API for pentomino game and solver."""
+"""API HTTP FastAPI para jogo interativo e solucionador de pentaminós.
+
+Expõe rotas para criar jogos em memória, colocar peças, desfazer e resolver o
+tabuleiro. Configura CORS via ``ALLOWED_ORIGINS`` e limites via variáveis de ambiente.
+"""
 
 from __future__ import annotations
 
@@ -26,7 +30,7 @@ _SOLVE_TIMEOUT_SEC_MAX = float(os.getenv("SOLVE_TIMEOUT_SEC_MAX", "300"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,6 +39,12 @@ _games: OrderedDict[str, BoardState] = OrderedDict()
 
 
 def _store_game(game_id: str, state: BoardState) -> None:
+    """Armazena ou atualiza o estado do jogo e aplica eviction LRU se necessário.
+
+    Args:
+        game_id: Identificador único da partida.
+        state: Estado mutável do tabuleiro.
+    """
     _games[game_id] = state
     _games.move_to_end(game_id)
     while len(_games) > _MAX_ACTIVE_GAMES:
@@ -42,6 +52,14 @@ def _store_game(game_id: str, state: BoardState) -> None:
 
 
 def _get_game(game_id: str) -> Optional[BoardState]:
+    """Obtém o estado da partida e atualiza ordem LRU.
+
+    Args:
+        game_id: ID da partida.
+
+    Returns:
+        ``BoardState`` se existir; caso contrário ``None``.
+    """
     state = _games.get(game_id)
     if state is not None:
         _games.move_to_end(game_id)
@@ -49,11 +67,15 @@ def _get_game(game_id: str) -> Optional[BoardState]:
 
 
 class NewGameBody(BaseModel):
+    """Corpo JSON para criar tabuleiro vazio."""
+
     rows: int = Field(6, ge=1, le=_MAX_BOARD_DIM)
     cols: int = Field(10, ge=1, le=_MAX_BOARD_DIM)
 
 
 class PlaceBody(BaseModel):
+    """Corpo JSON para colocar uma peça numa orientação e posição."""
+
     piece: str
     orientation: int = Field(ge=0)
     row: int = Field(ge=0)
@@ -61,6 +83,8 @@ class PlaceBody(BaseModel):
 
 
 class SolveBody(BaseModel):
+    """Parâmetros do solucionador (dimensões, algoritmo, poda, tempo máximo, tabuleiro opcional)."""
+
     rows: int = Field(6, ge=1, le=_MAX_BOARD_DIM)
     cols: int = Field(10, ge=1, le=_MAX_BOARD_DIM)
     algorithm: str = Field("dfs")
@@ -71,10 +95,23 @@ class SolveBody(BaseModel):
 
 
 def _serialize_board(board: List[List[int]]) -> List[List[int]]:
+    """Converte linhas do tabuleiro em listas mutáveis para JSON.
+
+    Args:
+        board: Grade interna (lista de listas).
+
+    Returns:
+        Cópia superficial adequada para serialização Pydantic/JSON.
+    """
     return [list(row) for row in board]
 
 
 def _pieces_catalog() -> List[dict]:
+    """Monta catálogo de peças com nome, id, cor e todas as orientações.
+
+    Returns:
+        Lista de dicionários consumidos pelo frontend.
+    """
     out = []
     for name in PIECE_NAMES:
         out.append(
@@ -90,11 +127,17 @@ def _pieces_catalog() -> List[dict]:
 
 @app.get("/pieces")
 def get_pieces() -> dict:
+    """Lista todas as peças e suas orientações."""
     return {"pieces": _pieces_catalog()}
 
 
 @app.post("/game/new")
 def game_new(body: NewGameBody) -> dict:
+    """Cria nova partida com tabuleiro vazio e devolve ``game_id``.
+
+    Raises:
+        HTTPException: 400 se dimensões inválidas segundo ``BoardState``.
+    """
     try:
         gid = str(uuid.uuid4())
         st = BoardState(body.rows, body.cols)
@@ -106,6 +149,11 @@ def game_new(body: NewGameBody) -> dict:
 
 @app.get("/game/{game_id}")
 def game_get(game_id: str) -> dict:
+    """Consulta estado atual: grade, peças colocadas e disponíveis.
+
+    Raises:
+        HTTPException: 404 se ``game_id`` não existir.
+    """
     st = _get_game(game_id)
     if st is None:
         raise HTTPException(status_code=404, detail="Unknown game_id")
@@ -122,6 +170,11 @@ def game_get(game_id: str) -> dict:
 
 @app.post("/game/{game_id}/place")
 def game_place(game_id: str, body: PlaceBody) -> dict:
+    """Coloca peça na partida indicada.
+
+    Raises:
+        HTTPException: 404 partida inexistente; 400 peça ou jogada inválida.
+    """
     st = _get_game(game_id)
     if st is None:
         raise HTTPException(status_code=404, detail="Unknown game_id")
@@ -137,6 +190,11 @@ def game_place(game_id: str, body: PlaceBody) -> dict:
 
 @app.post("/game/{game_id}/undo")
 def game_undo(game_id: str) -> dict:
+    """Desfaz última colocação na partida.
+
+    Raises:
+        HTTPException: 404 ou 400 conforme existência da partida e pilha de undo.
+    """
     st = _get_game(game_id)
     if st is None:
         raise HTTPException(status_code=404, detail="Unknown game_id")
@@ -149,6 +207,11 @@ def game_undo(game_id: str) -> dict:
 
 @app.post("/solve")
 def solve_endpoint(body: SolveBody) -> dict:
+    """Executa o solucionador sobre tabuleiro vazio ou parcial enviado no corpo.
+
+    Raises:
+        HTTPException: 400 por dimensões inconsistentes, tabuleiro inválido ou parâmetros do solver.
+    """
     try:
         if body.board is not None:
             board = [list(row) for row in body.board]
@@ -184,4 +247,5 @@ def solve_endpoint(body: SolveBody) -> dict:
 
 @app.get("/health")
 def health() -> dict:
+    """Verificação simples de disponibilidade do serviço."""
     return {"status": "ok"}

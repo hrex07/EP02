@@ -1,4 +1,4 @@
-"""Board helpers."""
+"""Testes de criação do tabuleiro, primeira célula vazia e poda por ilhas."""
 
 import pytest
 

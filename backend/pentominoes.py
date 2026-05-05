@@ -1,4 +1,8 @@
-"""Pentomino definitions: canonical shapes, rotations, reflections, orientations."""
+"""Definições das peças pentaminó: formas canónicas, rotações e reflexões (grupo D4).
+
+Constrói ``PIECES`` com todas as orientações distintas por nome e mapas nome↔id
+usados no tabuleiro e na API.
+"""
 
 from __future__ import annotations
 
@@ -7,8 +11,8 @@ from typing import Dict, List, Tuple
 Cell = Tuple[int, int]
 Orientation = Tuple[Cell, ...]
 
-# Canonical string grids: '#' = cell, '.' = empty
-# Shapes chosen so dihedral orientations match the classic 63 total.
+# Grades canónicas em texto: '#' = célula ocupada, '.' = vazio.
+# Formas escolhidas para compatibilidade com contagem clássica de orientações diedrais.
 CANONICAL: Dict[str, List[str]] = {
     "F": [".##", "##.", ".#."],
     "I": ["#####"],
@@ -45,7 +49,17 @@ PIECE_ID_TO_NAME: Dict[int, str] = {i + 1: n for i, n in enumerate(PIECE_NAMES)}
 
 
 def parse_grid(lines: List[str]) -> List[Cell]:
-    """Convert canonical '#' grid to list of (row, col) coordinates."""
+    """Converte uma grade textual com ``'#'`` em lista de coordenadas ``(linha, coluna)``.
+
+    Args:
+        lines: Cada string é uma linha da grade canónica.
+
+    Returns:
+        Lista com exatamente 5 células.
+
+    Raises:
+        ValueError: Se o número de células ``'#'`` for diferente de 5.
+    """
     cells: List[Cell] = []
     for r, line in enumerate(lines):
         for c, ch in enumerate(line):
@@ -57,7 +71,14 @@ def parse_grid(lines: List[str]) -> List[Cell]:
 
 
 def normalize(cells: List[Cell]) -> Orientation:
-    """Shift so min row and min col are 0; return sorted tuple of cells."""
+    """Translada as células para o quadrante mínimo e devolve tupla ordenada.
+
+    Args:
+        cells: Cinco coordenadas relativas.
+
+    Returns:
+        Forma normalizada imutável, comparável entre orientações equivalentes.
+    """
     min_r = min(r for r, _ in cells)
     min_c = min(c for _, c in cells)
     shifted = [(r - min_r, c - min_c) for r, c in cells]
@@ -66,17 +87,35 @@ def normalize(cells: List[Cell]) -> Orientation:
 
 
 def rotate_90(cells: List[Cell]) -> List[Cell]:
-    """Rotate 90° clockwise: (r, c) -> (c, -r)."""
+    """Roda 90° no sentido horário: ``(r, c) -> (c, -r)``.
+
+    Args:
+        cells: Coordenadas da peça.
+
+    Returns:
+        Novas coordenadas após rotação (lista mutável).
+    """
     return [(c, -r) for r, c in cells]
 
 
 def reflect_h(cells: List[Cell]) -> List[Cell]:
-    """Reflect horizontally: (r, c) -> (r, -c). Used by tests / utilities."""
+    """Reflete horizontalmente: ``(r, c) -> (r, -c)``.
+
+    Args:
+        cells: Coordenadas da peça.
+
+    Returns:
+        Coordenadas refletidas (útil em testes e utilitários).
+    """
     return [(r, -c) for r, c in cells]
 
 
 def _d4_transforms() -> List:
-    """The 8 isometries of the square grid as (r,c) -> (r',c')."""
+    """Lista das 8 isometrias da malha quadrada como funções ``(r,c) -> (r',c')``.
+
+    Returns:
+        Oito lambdas que geram o grupo diedral D4.
+    """
     return [
         lambda r, c: (r, c),
         lambda r, c: (c, -r),
@@ -90,7 +129,14 @@ def _d4_transforms() -> List:
 
 
 def all_orientations(cells: List[Cell]) -> List[Orientation]:
-    """All distinct orientations under the dihedral group D4 (deduplicated)."""
+    """Todas as orientações distintas sob D4, normalizadas e sem duplicados.
+
+    Args:
+        cells: Cinco células de uma peça.
+
+    Returns:
+        Lista ordenada de orientações (cada uma é tupla de pares).
+    """
     seen: set[Orientation] = set()
     for fn in _d4_transforms():
         transformed = [fn(r, c) for r, c in cells]
@@ -99,6 +145,11 @@ def all_orientations(cells: List[Cell]) -> List[Orientation]:
 
 
 def build_pieces() -> Dict[str, List[Orientation]]:
+    """Gera o mapa nome → lista de orientações para todas as peças canónicas.
+
+    Returns:
+        Dicionário preenchido a partir de ``CANONICAL``.
+    """
     out: Dict[str, List[Orientation]] = {}
     for name, lines in CANONICAL.items():
         cells = parse_grid(lines)
@@ -108,5 +159,5 @@ def build_pieces() -> Dict[str, List[Orientation]]:
 
 PIECES: Dict[str, List[Orientation]] = build_pieces()
 
-# Unique normalized D4 orbits (55). Some sources cite 63 under a different counting convention.
+# Soma das orbitas normalizadas sob D4 (55 orientações únicas no conjunto gerado).
 TOTAL_ORIENTATIONS = sum(len(v) for v in PIECES.values())

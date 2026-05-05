@@ -1,4 +1,4 @@
-"""Solver smoke tests."""
+"""Testes de fumaça do solucionador DFS/BFS e poda por ilhas."""
 
 from board import create
 from solver import solve

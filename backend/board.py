@@ -1,4 +1,9 @@
-"""Board representation, placement, state keys, island detection."""
+"""Representação do tabuleiro, colocação de peças, chaves de estado e poda por ilhas.
+
+Tipos e funções utilitárias usados pelo solucionador e pela API HTTP. O tabuleiro é
+uma matriz de inteiros: 0 indica célula vazia; valores positivos identificam peças
+via ``PIECE_NAME_TO_ID`` em ``pentominoes``.
+"""
 
 from __future__ import annotations
 
@@ -11,10 +16,19 @@ Board = List[List[int]]
 
 
 class BoardError(ValueError):
-    """Invalid board operation."""
+    """Exceção para operações inválidas sobre o tabuleiro ou dimensões."""
 
 
 def validate_dimensions(rows: int, cols: int) -> None:
+    """Garante dimensões positivas e área mínima para pelo menos um pentaminó.
+
+    Args:
+        rows: Número de linhas.
+        cols: Número de colunas.
+
+    Raises:
+        BoardError: Se ``rows`` ou ``cols`` forem inválidos ou a área for menor que 5.
+    """
     if rows < 1 or cols < 1:
         raise BoardError("Dimensions must be positive")
     if rows * cols < 5:
@@ -22,19 +36,55 @@ def validate_dimensions(rows: int, cols: int) -> None:
 
 
 def create(rows: int, cols: int) -> Board:
+    """Cria um tabuleiro vazio com todas as células em 0.
+
+    Args:
+        rows: Linhas.
+        cols: Colunas.
+
+    Returns:
+        Nova matriz ``rows x cols`` preenchida com zeros.
+
+    Raises:
+        BoardError: Se as dimensões forem inválidas.
+    """
     validate_dimensions(rows, cols)
     return [[0 for _ in range(cols)] for _ in range(rows)]
 
 
 def clone(board: Board) -> Board:
+    """Copia superficial do tabuleiro (cada linha é nova lista).
+
+    Args:
+        board: Estado a copiar.
+
+    Returns:
+        Cópia independente das linhas; estrutura nova, valores iguais.
+    """
     return [row[:] for row in board]
 
 
 def to_key(board: Board) -> Tuple[Tuple[int, ...], ...]:
+    """Converte o tabuleiro numa tupla imutável para usar como chave (ex.: AVL).
+
+    Args:
+        board: Grade atual.
+
+    Returns:
+        Tupla de tuplas de inteiros, comparável e hashable.
+    """
     return tuple(tuple(row) for row in board)
 
 
 def find_first_empty(board: Board) -> Optional[Tuple[int, int]]:
+    """Encontra a primeira célula vazia na ordem linha-major (cima→baixo, esq→dir).
+
+    Args:
+        board: Tabuleiro.
+
+    Returns:
+        Par ``(linha, coluna)`` ou ``None`` se estiver completo.
+    """
     for r, row in enumerate(board):
         for c, v in enumerate(row):
             if v == 0:
@@ -43,6 +93,18 @@ def find_first_empty(board: Board) -> Optional[Tuple[int, int]]:
 
 
 def can_place(board: Board, piece_id: int, orientation: Orientation, row: int, col: int) -> bool:
+    """Verifica se a peça cabe inteira no tabuleiro sem sair dos limites nem sobrepor.
+
+    Args:
+        board: Estado atual.
+        piece_id: Identificador numérico da peça.
+        orientation: Lista de deslocamentos ``(dr, dc)`` relativos à âncora ``(row, col)``.
+        row: Linha da âncora.
+        col: Coluna da âncora.
+
+    Returns:
+        ``True`` se todas as células alvo estiverem dentro do tabuleiro e forem 0.
+    """
     rows, cols = len(board), len(board[0])
     for dr, dc in orientation:
         rr, cc = row + dr, col + dc
@@ -54,6 +116,21 @@ def can_place(board: Board, piece_id: int, orientation: Orientation, row: int, c
 
 
 def place_piece(board: Board, piece_id: int, orientation: Orientation, row: int, col: int) -> Board:
+    """Devolve um novo tabuleiro com a peça colocada na posição indicada.
+
+    Args:
+        board: Estado base (não é mutado).
+        piece_id: ID da peça.
+        orientation: Deslocamentos da peça.
+        row: Linha âncora.
+        col: Coluna âncora.
+
+    Returns:
+        Novo ``Board`` com células da peça preenchidas com ``piece_id``.
+
+    Raises:
+        BoardError: Se a colocação for inválida.
+    """
     if not can_place(board, piece_id, orientation, row, col):
         raise BoardError("Invalid placement: out of bounds or overlap")
     out = clone(board)
@@ -63,6 +140,15 @@ def place_piece(board: Board, piece_id: int, orientation: Orientation, row: int,
 
 
 def remove_piece(board: Board, piece_id: int) -> Board:
+    """Remove todas as células que contenham ``piece_id``, voltando-as a 0.
+
+    Args:
+        board: Estado atual.
+        piece_id: ID a remover.
+
+    Returns:
+        Novo tabuleiro sem ocorrências desse ID.
+    """
     out = clone(board)
     for r, row in enumerate(out):
         for c, v in enumerate(row):
@@ -72,6 +158,14 @@ def remove_piece(board: Board, piece_id: int) -> Board:
 
 
 def placed_piece_ids(board: Board) -> set[int]:
+    """Conjunto de IDs de peça já presentes no tabuleiro (células não zero).
+
+    Args:
+        board: Estado atual.
+
+    Returns:
+        Conjunto de inteiros ``piece_id``.
+    """
     ids: set[int] = set()
     for row in board:
         for v in row:
@@ -81,16 +175,34 @@ def placed_piece_ids(board: Board) -> set[int]:
 
 
 def remaining_piece_names(board: Board) -> List[str]:
+    """Lista nomes de pentaminós ainda não colocados.
+
+    Args:
+        board: Estado atual.
+
+    Returns:
+        Nomes em ``PIECE_NAMES`` cujo ID não aparece no tabuleiro.
+    """
     used = placed_piece_ids(board)
     return [n for n in PIECE_NAMES if PIECE_NAME_TO_ID[n] not in used]
 
 
 def islands_valid(board: Board) -> bool:
-    """True if every empty connected region has size divisible by 5."""
+    """Verifica se cada componente conexo de células vazias tem tamanho múltiplo de 5.
+
+    Usado na poda: regiões vazias que não podem ser cobertas por pentaminós são inválidas.
+
+    Args:
+        board: Estado a inspecionar.
+
+    Returns:
+        ``True`` se todas as ilhas vazias tiverem cardinalidade divisível por 5.
+    """
     rows, cols = len(board), len(board[0])
     seen = [[False] * cols for _ in range(rows)]
 
     def bfs(sr: int, sc: int) -> int:
+        """Conta células vazias na componente que contém ``(sr, sc)``."""
         q = deque([(sr, sc)])
         seen[sr][sc] = True
         count = 0
@@ -113,9 +225,24 @@ def islands_valid(board: Board) -> bool:
 
 
 class BoardState:
-    """Mutable game board with undo stack for interactive play."""
+    """Tabuleiro mutável para jogo interativo com pilha de desfazer.
+
+    Attributes:
+        rows: Altura do tabuleiro.
+        cols: Largura do tabuleiro.
+        grid: Grade atual (mutável entre jogadas).
+    """
 
     def __init__(self, rows: int, cols: int) -> None:
+        """Inicializa estado vazio com dimensões válidas.
+
+        Args:
+            rows: Linhas.
+            cols: Colunas.
+
+        Raises:
+            BoardError: Se as dimensões forem inválidas.
+        """
         validate_dimensions(rows, cols)
         self.rows = rows
         self.cols = cols
@@ -123,6 +250,18 @@ class BoardState:
         self._undo: List[Tuple[str, int, int, int, int]] = []
 
     def place(self, piece_name: str, orientation_index: int, row: int, col: int, orientations: List[Orientation]) -> None:
+        """Coloca uma peça pela orientação e âncora dadas.
+
+        Args:
+            piece_name: Letra da peça (ex.: ``"F"``).
+            orientation_index: Índice na lista de orientações pré-calculadas.
+            row: Linha âncora.
+            col: Coluna âncora.
+            orientations: Lista de orientações da peça (geralmente ``PIECES[piece_name]``).
+
+        Raises:
+            BoardError: Peça desconhecida, já colocada, índice inválido ou sobreposição/fora.
+        """
         if piece_name not in PIECE_NAME_TO_ID:
             raise BoardError("Unknown piece")
         pid = PIECE_NAME_TO_ID[piece_name]
@@ -137,6 +276,11 @@ class BoardState:
         self._undo.append((piece_name, orientation_index, row, col, pid))
 
     def undo(self) -> None:
+        """Desfaz a última colocação registrada na pilha interna.
+
+        Raises:
+            BoardError: Se não houver jogadas para desfazer.
+        """
         if not self._undo:
             raise BoardError("Nothing to undo")
         piece_name, _oi, _r, _c, pid = self._undo.pop()

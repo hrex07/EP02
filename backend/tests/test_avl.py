@@ -1,4 +1,4 @@
-"""AVL tree."""
+"""Testes da árvore AVL usada como conjunto de visitados."""
 
 import random
 

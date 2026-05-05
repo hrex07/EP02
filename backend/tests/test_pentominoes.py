@@ -1,4 +1,4 @@
-"""Pentomino orientation generation."""
+"""Testes da geração de orientações diedrais e contagens de ``PIECES``."""
 
 from pentominoes import PIECES, PIECE_NAMES, TOTAL_ORIENTATIONS
 

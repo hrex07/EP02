@@ -1,4 +1,4 @@
-"""HTTP API resource limits and game eviction."""
+"""Testes de limites da API HTTP e eviction de jogos em memória."""
 
 import pytest
 from fastapi.testclient import TestClient
